@@ -23,14 +23,5 @@ class _lain_link_inst(object):
 
 class _lain_chain(object):
 
-    def __init__(self, head, tail, metachain):
-        assert isinstance(head, lain_link)
-        assert isinstance(tail, lain_link)
-        assert isinstance(metachain, _lain_chain)
-    
-    def isin(self, link):
+    def __init__(self):
         pass
-    
-    def __eq__(self, dest):
-        pass
-    
