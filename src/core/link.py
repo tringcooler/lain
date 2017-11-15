@@ -33,3 +33,7 @@ class _lain_chain(object):
     
     def __eq__(self, dest):
         pass
+    
+    def __contains__(self, dest):
+        pass
+    
