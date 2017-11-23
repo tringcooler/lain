@@ -179,6 +179,8 @@ class _lain_chain(object):
                 vch = vlpool[li.head]
                 vct = vlpool[li.tail]
                 if vct.top == li.tail:
+                    if vch.top == li.tail:
+                        raise RuntimeError('loop chain', li.tail)
                     vct.vlink(vch)
         chains = {}
         for l in vlpool:
