@@ -34,7 +34,7 @@ class _lain_link_inst_pool(object):
 
 class _lain_link_inst(object):
 
-    def __new__(self, desc, head, tail):
+    def __new__(cls, desc, head, tail):
         assert isinstance(desc, lain_link)
         assert isinstance(head, lain_link)
         assert isinstance(tail, lain_link)
@@ -59,6 +59,14 @@ class _lain_link_inst(object):
             return self._tail
         elif one == self._tail:
             return self._head
+        else:
+            raise LainError('neither head nor tail')
+
+    def direct(self, one):
+        if one == self._head:
+            return 'out'
+        elif one == self._tail:
+            return 'in'
         else:
             raise LainError('neither head nor tail')
 
