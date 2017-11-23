@@ -97,38 +97,48 @@ class _lain_link_inst(object):
         else:
             raise LainError('neither head nor tail')
 
+    def __repr__(self):
+        return '<link: {:s} inst: {:s} -> {:s}>'.format(
+            self.desc, self.head, self.tail)
+
 class _lain_chain(object):
 
     def __init__(self, root, metachain):
         assert isinstance(root, lain_link)
-        assert isinstance(metachain, _lain_chain)
+        assert not metachain or isinstance(metachain, _lain_chain)
         self._root = root
         self._meta = metachain
 
     def _traversal_h(self, root = None):
         if root is None:
             root = self._root
+        walked = set()
         fifo = [root]
         while len(fifo) > 0:
-            node = t_fifo.pop(0)
-            yield node
-            for cnode in node._child.foreach():
-                fifo.append(('tra', cnode))
+            node = fifo.pop(0)
+            for li in node._child.foreach():
+                yield li
+                #cnode = li.another(node)
+                assert li.head == node
+                cnode = li.tail
+                if not cnode in walked:
+                    walked.add(cnode)
+                    fifo.append(cnode)
 
-    def _traversal_v(self, root = None, ordr = 0):
+    def _traversal_v(self, root = None, walked = None):
         if root is None:
             root = self._root
-        child = root._child
-        child_len = len(child)
-        while ordr < 0:
-            ordr += child_len + 1
-        if ordr == 0:
-            yield node
-        for cidx, cnode in enumerate(child.foreach()):
-            for nd in self._traversal_v(cnode, ordr):
-                yield nd
-            if ordr == cidx + 1:
-                yield node
+        if walked is None:
+            walked = set()
+        for li in root._child.foreach():
+            yield li
+            #cnode = li.another(root)
+            assert li.head == root
+            cnode = li.tail
+            if not cnode in walked:
+                walked.add(cnode)
+                for cli in self._traversal_v(cnode, walked):
+                    yield cli
 
     def split(self, metachain):
         pass
@@ -160,7 +170,9 @@ def test():
     nds[4].link_from(nds[1], tag)
     nds[2].link_to(nds[5], tag)
     nds[2].link_to(nds[6], tag)
-    return nds, tag
+    nds[1].link_to(nds[2], tag)
+    ch = _lain_chain(nds[0], None)
+    return ch
 
 if __name__ == '__main__':
-    nd, tag = test()
+    ch = test()
