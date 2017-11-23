@@ -1,6 +1,8 @@
 #!python2
 # coding: utf-8
 
+from util import *
+
 LainError = type('LainError', (Exception,), {})
 
 class lain_link(object):
@@ -13,11 +15,12 @@ class lain_link(object):
     def link_to(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
+        _lain_link_inst(link, self, dest)
 
     def link_from(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
-
+        _lain_link_inst(link, dest, self)
 
 class _lain_link_inst_pool(object):
 
@@ -31,26 +34,50 @@ class _lain_link_inst_pool(object):
     def __len__(self):
         return len(self._pool)
 
+    def add(self, dest):
+        self._pool.append(dest)
 
+    def remove(self, dest):
+        try:
+            self._pool.remove(dest)
+        except ValueError:
+            pass
+
+    def get_inst(self, desc, head, tail):
+        for i in self._pool:
+            if (i.desc == desc
+                and i.head == head
+                and i.tail == tail):
+                return i
+        else:
+            return None
+
+@roprop('desc')
+@roprop('head')
+@roprop('tail')
 class _lain_link_inst(object):
 
     def __new__(cls, desc, head, tail):
         assert isinstance(desc, lain_link)
         assert isinstance(head, lain_link)
         assert isinstance(tail, lain_link)
-        li = head._child.get(desc, tail)
+        li = head._child.get_inst(desc, head, tail)
         if not li is None:
-            assert li == tail._child.get(desc, head)
+            assert li == tail._parent.get_inst(desc, head, tail)
+            #print 'exist'
             return li
         else:
+            #print 'new'
             return super(_lain_link_inst, cls).__new__(cls)
 
     def __init__(self, desc, head, tail):
         self._desc = desc
         self._head = head
         self._tail = tail
+        self._link()
 
     def _link(self):
+        self._desc._inst.add(self)
         self._head._child.add(self)
         self._tail._parent.add(self)
 
@@ -123,8 +150,17 @@ def test():
             self.tag = tag
 
         def __repr__(self):
-            return 'nd' + str(tag)
+            return 'nd' + str(self.tag)
 
     nds = [nd(i) for i in xrange(7)]
-    nds[0]._child
+    tag = nd('tag')
+    nds[0].link_to(nds[1], tag)
+    nds[2].link_from(nds[0], tag)
+    nds[1].link_to(nds[3], tag)
+    nds[4].link_from(nds[1], tag)
+    nds[2].link_to(nds[5], tag)
+    nds[2].link_to(nds[6], tag)
+    return nds, tag
 
+if __name__ == '__main__':
+    nd, tag = test()
