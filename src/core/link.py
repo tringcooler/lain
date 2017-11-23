@@ -87,7 +87,7 @@ class _lain_link_inst(object):
         elif one == self._tail:
             return self._head
         else:
-            raise LainError('neither head nor tail')
+            raise ValueError('neither head nor tail')
 
     def direct(self, one):
         if one == self._head:
@@ -95,12 +95,15 @@ class _lain_link_inst(object):
         elif one == self._tail:
             return 'in'
         else:
-            raise LainError('neither head nor tail')
+            raise ValueError('neither head nor tail')
 
     def __repr__(self):
         return '<link: {:s} inst: {:s} -> {:s}>'.format(
             self.desc, self.head, self.tail)
 
+@neq
+@roprop('root')
+@roprop('meta')
 class _lain_chain(object):
 
     def __init__(self, root, metachain):
@@ -109,10 +112,11 @@ class _lain_chain(object):
         self._root = root
         self._meta = metachain
 
-    def _traversal_h(self, root = None):
+    def _traversal_h(self, root = None, walked = None):
         if root is None:
             root = self._root
-        walked = set()
+        if walked is None:
+            walked = set()
         fifo = [root]
         while len(fifo) > 0:
             node = fifo.pop(0)
@@ -140,17 +144,33 @@ class _lain_chain(object):
                 for cli in self._traversal_v(cnode, walked):
                     yield cli
 
+    @lazyprop
+    def links(self):
+        rs = set()
+        rs.add(self.root)
+        for li in self._traversal_v(self.root, rs):
+            pass
+        return rs
+
     def split(self, metachain):
-        pass
+        for li in self._traversal_v(self.root):
+            pass
     
-    def isin(self, link):
-        pass
-    
+    @iseq
     def __eq__(self, dest):
-        pass
+        return (isinstance(dest, _lain_chain)
+            and self.root == dest.root
+            and self.meta == dest.meta)
     
     def __contains__(self, dest):
-        pass
+        if isinstance(dest, _lain_link_inst):
+            link = dest.desc
+        elif isinstance(dest, lain_link):
+            link = dest
+        else:
+            #return False
+            raise TypeError('checked type should be link')
+        return link in self.links
     
 def test():
     class nd(lain_link):
