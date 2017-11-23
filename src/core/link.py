@@ -149,12 +149,21 @@ class _lain_chain(object):
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
-            pass
+            pass #do nothing
         return rs
 
     def split(self, metachain):
+        roots = []
+        vlpool = {}
         for li in self._traversal_v(self.root):
-            pass
+            if li in self.meta:
+                if not li.head in vlpool:
+                    vlpool[li.head] = vchain()
+                if not li.tail in vlpool:
+                    vlpool[li.tail] = vchain()
+                vch = vlpool[li.head]
+                vct = vlpool[li.tail]
+                #vct.
     
     @iseq
     def __eq__(self, dest):
