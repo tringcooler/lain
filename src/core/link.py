@@ -22,6 +22,9 @@ class lain_link(object):
         assert isinstance(link, lain_link)
         _lain_link_inst(link, dest, self)
 
+    def chain(self, metachain = None):
+        return _lain_chain(self, metachain)
+
 class _lain_link_inst_pool(object):
 
     def __init__(self):
@@ -107,13 +110,15 @@ class _lain_link_inst(object):
 @roprop('meta')
 class _lain_chain(object):
 
-    def __init__(self, root, metachain):
+    def __init__(self, root, metachain = None):
         assert isinstance(root, lain_link)
-        assert not metachain or isinstance(metachain, _lain_chain)
+        assert metachain is None or isinstance(metachain, _lain_chain)
         self._root = root
         self._meta = metachain
 
     def _traversal_h(self, root = None, walked = None):
+        if self.meta is None:
+            return
         if root is None:
             root = self._root
         if walked is None:
@@ -122,6 +127,8 @@ class _lain_chain(object):
         while len(fifo) > 0:
             node = fifo.pop(0)
             for li in node._child.foreach():
+                if not li in self.meta:
+                    continue
                 yield li
                 #cnode = li.another(node)
                 assert li.head == node
@@ -131,11 +138,15 @@ class _lain_chain(object):
                     fifo.append(cnode)
 
     def _traversal_v(self, root = None, walked = None):
+        if self.meta is None:
+            return
         if root is None:
             root = self._root
         if walked is None:
             walked = set()
         for li in root._child.foreach():
+            if not li in self.meta:
+                continue
             yield li
             #cnode = li.another(root)
             assert li.head == root
@@ -174,7 +185,7 @@ class _lain_chain(object):
             top = vlpool[l].top
             if not top in chains:
                 chains[top] = _lain_chain(top, metachain)
-                
+        return chains.values()
     
     @iseq
     def __eq__(self, dest):
@@ -211,7 +222,8 @@ def test():
     nds[2].link_to(nds[5], tag)
     nds[2].link_to(nds[6], tag)
     nds[1].link_to(nds[2], tag)
-    ch = _lain_chain(nds[0], None)
+    tagch = tag.chain()
+    ch = nds[0].chain(tagch)
     return ch
 
 if __name__ == '__main__':
