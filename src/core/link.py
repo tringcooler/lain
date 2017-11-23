@@ -101,6 +101,7 @@ class _lain_link_inst(object):
         return '<link: {:s} inst: {:s} -> {:s}>'.format(
             self.desc, self.head, self.tail)
 
+# WFPOSET: Well-Founded Partially Ordered SET
 @neq
 @roprop('root')
 @roprop('meta')
@@ -153,17 +154,27 @@ class _lain_chain(object):
         return rs
 
     def split(self, metachain):
-        roots = []
         vlpool = {}
         for li in self._traversal_v(self.root):
-            if li in self.meta:
+            if li in metachain:
                 if not li.head in vlpool:
-                    vlpool[li.head] = vchain()
+                    vc = vchain()
+                    vc.top = li.head
+                    vlpool[li.head] = vc
                 if not li.tail in vlpool:
-                    vlpool[li.tail] = vchain()
+                    vc = vchain()
+                    vc.top = li.tail
+                    vlpool[li.tail] = vc
                 vch = vlpool[li.head]
                 vct = vlpool[li.tail]
-                #vct.
+                if vct.top == li.tail:
+                    vct.vlink(vch)
+        chains = {}
+        for l in vlpool:
+            top = vlpool[l].top
+            if not top in chains:
+                chains[top] = _lain_chain(top, metachain)
+                
     
     @iseq
     def __eq__(self, dest):
