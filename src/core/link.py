@@ -254,12 +254,8 @@ class _lain_chain(object):
         return rs
 
     def links_dirty(self):
-        r = (self._cur_root_stamp() > self._root_stamp
+        return (self._cur_root_stamp() > self._root_stamp
                 or (self.meta and self.meta.links_dirty()))
-        if r:
-            print 'dirty', self
-            print self._cur_root_stamp(), self._root_stamp
-        return r
 
     def get_links(self, root_out = False):
         rs = self.links.copy()
@@ -353,7 +349,13 @@ def LainCoChain(ch):
     else:
         raise TypeError('should be a lain chain')
 
-LainIsolateLink = lain_link()
+class _lain_isolate_link(lain_link):
+    def isolate(self):
+        for li in self.child.foreach():
+            li.cut()
+        for li in self.parent.foreach():
+            li.cut()
+LainIsolateLink = _lain_isolate_link()
 LainSpreadChain = _lain_co_chain(LainIsolateLink, LainAnyChain, False)
 
 def test():
@@ -417,11 +419,37 @@ def test():
     print ch.root.lower.links
     print isond.upper.links
     print isond.lower.links
-    LainSpreadChain.cut()
+    #LainSpreadChain.cut()
+    LainIsolateLink.isolate()
     print ch.root.upper.links
     print ch.root.lower.links
     print isond.upper.links
     print isond.lower.links
+    print '===='
+    ndm0 = nd('m0')
+    ndm1o = nd('m1o')
+    ndm1 = nd('m1')
+    ndm2o = nd('m2o')
+    ndm2 = nd('m2')
+    ndm3o = nd('m3o')
+    ndm3 = nd('m3')
+    chm0 = ndm0.chain()
+    ndm1o.link_to(ndm1, ndm0)
+    chm1 = ndm1o.chain(chm0)
+    ndm2o.link_to(ndm2, ndm1)
+    chm2 = ndm2o.chain(chm1)
+    ndm3o.link_to(ndm3, ndm2)
+    chm3 = ndm3o.chain(chm2)
+    print chm3.links
+    chm1.cut()
+    print chm3._root_stamp, chm3._cur_root_stamp(), chm3.links_dirty()
+    print chm2._root_stamp, chm2._cur_root_stamp(), chm2.links_dirty()
+    print chm1._root_stamp, chm1._cur_root_stamp(), chm1.links_dirty()
+    print chm1.links
+    print chm3._root_stamp, chm3._cur_root_stamp(), chm3.links_dirty()
+    print chm2._root_stamp, chm2._cur_root_stamp(), chm2.links_dirty()
+    print chm1._root_stamp, chm1._cur_root_stamp(), chm1.links_dirty()
+    print chm3.links
     return ch, chrv, isond
 
 if __name__ == '__main__':
