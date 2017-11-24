@@ -23,18 +23,12 @@ class lain_link(object):
     def link_to(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
-        #print self, '->', dest
         _lain_link_inst(link, self, dest)
-        self.stampu = None
-        dest.stampl = None
 
     def link_from(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
-        #print self, '<-', dest
         _lain_link_inst(link, dest, self)
-        dest.stampu = None
-        self.stampl = None
 
     def stable(self):
         self.upper = None
@@ -42,11 +36,11 @@ class lain_link(object):
 
     @lazypropdd
     def upper(self):
-        return _lain_chain(self, LainAnyChain, True)
+        return _lain_chain(self, LainSpreadChain, True)
 
     @lazypropdd
     def lower(self):
-        return _lain_chain(self, LainAnyChain, False)
+        return _lain_chain(self, LainSpreadChain, False)
 
     @property
     def stampu(self):
@@ -134,22 +128,33 @@ class _lain_link_inst(object):
         self._link()
 
     def _link(self):
-        self._desc.inst.add(self)
-        self._head.child.add(self)
-        self._tail.parent.add(self)
+        print 'link', self.head, '->', self.tail
+        self.desc.inst.add(self)
+        self.head.child.add(self)
+        self.tail.parent.add(self)
+        self.head.stampu = None
+        self.tail.stampl = None
+
+    def cut(self):
+        print 'cut', self.head, '->', self.tail
+        self.desc.inst.remove(self)
+        self.head.child.remove(self)
+        self.tail.parent.remove(self)
+        self.head.stampu = None
+        self.tail.stampl = None
 
     def another(self, one):
-        if one == self._head:
-            return self._tail
-        elif one == self._tail:
-            return self._head
+        if one == self.head:
+            return self.tail
+        elif one == self.tail:
+            return self.head
         else:
             raise ValueError('neither head nor tail')
 
     def direct(self, one):
-        if one == self._head:
+        if one == self.head:
             return 'out'
-        elif one == self._tail:
+        elif one == self.tail:
             return 'in'
         else:
             raise ValueError('neither head nor tail')
@@ -170,14 +175,17 @@ class _lain_chain(object):
         assert metachain is None or isinstance(metachain, _lain_chain)
         self._reverse = reverse
         self._root = root
-        self._root_stamp = self._cur_root_stamp()
         self._meta = metachain
+        self._root_stamp = self._cur_root_stamp()
 
     def _cur_root_stamp(self):
         if self.reverse:
-            return self.root.stampl
+            rs = (self.root.stampl,)
         else:
-            return self.root.stampu
+            rs = (self.root.stampu,)
+        if self.meta:
+            rs += self.meta._root_stamp
+        return rs
 
     def _traversal_h(self, root = None, walked = None):
         if self.meta is None:
@@ -237,7 +245,7 @@ class _lain_chain(object):
 
     @lazypropdh
     def links(self):
-        #print self.root, 'links calc'
+        print self.root, 'links calc'
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
@@ -246,13 +254,25 @@ class _lain_chain(object):
         return rs
 
     def links_dirty(self):
-        return self._cur_root_stamp() > self._root_stamp
+        r = (self._cur_root_stamp() > self._root_stamp
+                or (self.meta and self.meta.links_dirty()))
+        if r:
+            print 'dirty', self
+            print self._cur_root_stamp(), self._root_stamp
+        return r
 
     def get_links(self, root_out = False):
         rs = self.links.copy()
         if root_out:
             rs.discard(self.root)
         return rs
+
+    def cut(self, metachain = None):
+        lis = []
+        for li in self._traversal_v(self.root, None):
+            lis.append(li)
+        for li in lis:
+            li.cut()
 
     def split(self, metachain):
         vlpool = {}
@@ -333,6 +353,9 @@ def LainCoChain(ch):
     else:
         raise TypeError('should be a lain chain')
 
+LainIsolateLink = lain_link()
+LainSpreadChain = _lain_co_chain(LainIsolateLink, LainAnyChain, False)
+
 def test():
     class nd(lain_link):
 
@@ -384,7 +407,22 @@ def test():
         if hasattr(l, '_lower'):
                 print 'l',
         print
-    return ch, chrv
+    isond = nd('iso')
+    isolink = nd('isolink')
+    isometa = nd('isometa')
+    isolink.link_from(LainIsolateLink, isometa)
+    isond.link_to(nds[0], isolink)
+    print '===='
+    print ch.root.upper.links
+    print ch.root.lower.links
+    print isond.upper.links
+    print isond.lower.links
+    LainSpreadChain.cut()
+    print ch.root.upper.links
+    print ch.root.lower.links
+    print isond.upper.links
+    print isond.lower.links
+    return ch, chrv, isond
 
 if __name__ == '__main__':
-    ch, chrv = test()
+    ch, chrv, isond = test()
