@@ -103,10 +103,6 @@ class _lain_link_inst_pool(object):
         else:
             return None
 
-    @lazyprop
-    def another(self):
-        pass
-
 @roprop('desc')
 @roprop('head')
 @roprop('tail')
@@ -330,6 +326,9 @@ def test():
     print ch.links
     print chrv.links
     nds[1].link_to(nds[2], tag)
+    print ch.links
+    print chrv.links
+    nds[3].link_to(nds[4], tag)
     return ch, chrv
 
 if __name__ == '__main__':
