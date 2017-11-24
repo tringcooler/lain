@@ -5,6 +5,9 @@ from util import *
 
 LainError = type('LainError', (Exception,), {})
 
+@roprop('inst')
+@roprop('parent')
+@roprop('child')
 class lain_link(object):
 
     def __init__(self):
@@ -68,9 +71,9 @@ class _lain_link_inst(object):
         assert isinstance(desc, lain_link)
         assert isinstance(head, lain_link)
         assert isinstance(tail, lain_link)
-        li = head._child.get_inst(desc, head, tail)
+        li = head.child.get_inst(desc, head, tail)
         if not li is None:
-            assert li == tail._parent.get_inst(desc, head, tail)
+            assert li == tail.parent.get_inst(desc, head, tail)
             #print 'exist'
             return li
         else:
@@ -84,9 +87,9 @@ class _lain_link_inst(object):
         self._link()
 
     def _link(self):
-        self._desc._inst.add(self)
-        self._head._child.add(self)
-        self._tail._parent.add(self)
+        self._desc.inst.add(self)
+        self._head.child.add(self)
+        self._tail.parent.add(self)
 
     def another(self, one):
         if one == self._head:
@@ -112,13 +115,15 @@ class _lain_link_inst(object):
 @neq
 @roprop('root')
 @roprop('meta')
+@roprop('reverse')
 class _lain_chain(object):
 
-    def __init__(self, root, metachain = None):
+    def __init__(self, root, metachain = None, reverse = False):
         assert isinstance(root, lain_link)
         assert metachain is None or isinstance(metachain, _lain_chain)
         self._root = root
         self._meta = metachain
+        self._reverse = reverse
 
     def _traversal_h(self, root = None, walked = None):
         if self.meta is None:
@@ -130,13 +135,21 @@ class _lain_chain(object):
         fifo = [root]
         while len(fifo) > 0:
             node = fifo.pop(0)
-            for li in node._child.foreach():
+            if self.reverse:
+                node_succ = node.parent
+            else:
+                node_succ = node.child
+            for li in node_succ.foreach():
                 if not li in self.meta:
                     continue
                 yield li
                 #cnode = li.another(node)
-                assert li.head == node
-                cnode = li.tail
+                if self.reverse:
+                    assert li.tail == node
+                    cnode = li.head
+                else:
+                    assert li.head == node
+                    cnode = li.tail
                 if not cnode in walked:
                     walked.add(cnode)
                     fifo.append(cnode)
@@ -148,13 +161,21 @@ class _lain_chain(object):
             root = self._root
         if walked is None:
             walked = set()
-        for li in root._child.foreach():
+        if self.reverse:
+            root_succ = root.parent
+        else:
+            root_succ = root.child
+        for li in root_succ.foreach():
             if not li in self.meta:
                 continue
             yield li
             #cnode = li.another(root)
-            assert li.head == root
-            cnode = li.tail
+            if self.reverse:
+                assert li.tail == root
+                cnode = li.head
+            else:
+                assert li.head == root
+                cnode = li.tail
             if not cnode in walked:
                 walked.add(cnode)
                 for cli in self._traversal_v(cnode, walked):
@@ -162,7 +183,7 @@ class _lain_chain(object):
 
     @lazypropdh
     def links(self):
-        print self.root, 'calc'
+        #print self.root, 'links calc'
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
@@ -171,6 +192,12 @@ class _lain_chain(object):
 
     def links_dirty(self):
         pass
+
+    def get_links(self, root_out = False):
+        rs = self.links.copy()
+        if root_out:
+            rs.discard(self.root)
+        return rs
 
     def split(self, metachain):
         vlpool = {}
@@ -186,22 +213,29 @@ class _lain_chain(object):
                     vlpool[li.tail] = vc
                 vch = vlpool[li.head]
                 vct = vlpool[li.tail]
-                if vct.top == li.tail:
-                    if vch.top == li.tail:
-                        raise RuntimeError('loop chain', li.tail)
-                    vct.vlink(vch)
+                if self.reverse:
+                    if vch.top == li.head:
+                        if vct.top == li.head:
+                            raise RuntimeError('loop chain', li.head)
+                        vch.vlink(vct)
+                else:
+                    if vct.top == li.tail:
+                        if vch.top == li.tail:
+                            raise RuntimeError('loop chain', li.tail)
+                        vct.vlink(vch)
         chains = {}
         for l in vlpool:
             top = vlpool[l].top
             if not top in chains:
-                chains[top] = _lain_chain(top, metachain)
+                chains[top] = _lain_chain(top, metachain, self.reverse)
         return chains.values()
     
     @iseq
     def __eq__(self, dest):
         return (isinstance(dest, _lain_chain)
             and self.root == dest.root
-            and self.meta == dest.meta)
+            and self.meta == dest.meta
+            and self.reverse == dest.reverse)
     
     def __contains__(self, dest):
         if isinstance(dest, _lain_link_inst):
@@ -234,7 +268,8 @@ def test():
     nds[1].link_to(nds[2], tag)
     tagch = tag.chain()
     ch = nds[0].chain(tagch)
-    return ch
+    chrv = _lain_chain(nds[6], tagch, True)
+    return ch, chrv
 
 if __name__ == '__main__':
-    ch = test()
+    ch, chrv = test()
