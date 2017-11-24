@@ -25,7 +25,7 @@ class lain_link(object):
         assert isinstance(link, lain_link)
         _lain_link_inst(link, self, dest)
         self.stampu = None
-        self.stampl = None
+        dest.stampl = None
 
     def link_from(self, dest, link):
         assert isinstance(dest, lain_link)
@@ -235,7 +235,7 @@ class _lain_chain(object):
 
     @lazypropdh
     def links(self):
-        print self.root, 'links calc'
+        #print self.root, 'links calc'
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
