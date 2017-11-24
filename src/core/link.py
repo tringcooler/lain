@@ -23,6 +23,7 @@ class lain_link(object):
     def link_to(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
+        print self, '->', dest
         _lain_link_inst(link, self, dest)
         self.stampu = None
         dest.stampl = None
@@ -30,15 +31,20 @@ class lain_link(object):
     def link_from(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
+        print self, '<-', dest
         _lain_link_inst(link, dest, self)
         dest.stampu = None
         self.stampl = None
 
-    @lazyprop
+    def stable(self):
+        self.upper = None
+        self.lower = None
+
+    @lazypropdd
     def upper(self):
         return _lain_chain(self, LainAnyChain, True)
 
-    @lazyprop
+    @lazypropdd
     def lower(self):
         return _lain_chain(self, LainAnyChain, False)
 
@@ -231,7 +237,7 @@ class _lain_chain(object):
 
     @lazypropdh
     def links(self):
-        #print self.root, 'links calc'
+        print self.root, 'links calc'
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
@@ -278,6 +284,10 @@ class _lain_chain(object):
             if not top in chains:
                 chains[top] = _lain_chain(top, metachain, self.reverse)
         return chains.values()
+
+    def stable(self):
+        for l in self.links:
+            l.stable()
     
     @iseq
     def __eq__(self, dest):
@@ -322,13 +332,36 @@ def test():
     #nds[1].link_to(nds[2], tag)
     tagch = tag.chain()
     ch = nds[0].chain(tagch)
+    for l in ch.links:
+        print 'stable', l,
+        if hasattr(l, '_upper'):
+                print 'u',
+        if hasattr(l, '_lower'):
+                print 'l',
+        print
+    ch.stable()
     chrv = _lain_chain(nds[6], tagch, True)
     print ch.links
     print chrv.links
     nds[1].link_to(nds[2], tag)
     print ch.links
     print chrv.links
+    for l in ch.links:
+        print 'stable', l,
+        if hasattr(l, '_upper'):
+                print 'u',
+        if hasattr(l, '_lower'):
+                print 'l',
+        print
+    ch.stable()
     nds[3].link_to(nds[4], tag)
+    for l in ch.links:
+        print 'stable', l,
+        if hasattr(l, '_upper'):
+                print 'u',
+        if hasattr(l, '_lower'):
+                print 'l',
+        print
     return ch, chrv
 
 if __name__ == '__main__':
