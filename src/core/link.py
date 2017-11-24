@@ -10,23 +10,68 @@ LainError = type('LainError', (Exception,), {})
 @roprop('child')
 class lain_link(object):
 
+    _stamp_index = 0
+
     def __init__(self):
         self._inst = _lain_link_inst_pool()
         self._parent = _lain_link_inst_pool()
         self._child = _lain_link_inst_pool()
+        self._stamp = [0, 0]
+        self.stampu = None
+        self.stampl = None
 
     def link_to(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
         _lain_link_inst(link, self, dest)
+        self.stampu = None
+        self.stampl = None
 
     def link_from(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
         _lain_link_inst(link, dest, self)
+        dest.stampu = None
+        self.stampl = None
+
+    @lazyprop
+    def upper(self):
+        return _lain_chain(self, LainAnyChain, True)
+
+    @lazyprop
+    def lower(self):
+        return _lain_chain(self, LainAnyChain, False)
+
+    @property
+    def stampu(self):
+        return self._stamp[0]
+
+    @stampu.setter
+    def stampu(self, v):
+        self._stamp[0] = lain_link._stamp_index
+        lain_link._stamp_index += 1
+        if len(self.parent) > 0:
+            for l in self.upper.links:
+                if l is self:
+                    continue
+                l.stampu = None
+
+    @property
+    def stampl(self):
+        return self._stamp[1]
+
+    @stampl.setter
+    def stampl(self, v):
+        self._stamp[1] = lain_link._stamp_index
+        lain_link._stamp_index += 1
+        if len(self.parent) > 0:
+            for l in self.lower.links:
+                if l is self:
+                    continue
+                l.stampl = None
 
     def chain(self, metachain = None):
-        return _lain_chain(self, metachain)
+        return _lain_chain(self, metachain, False)
 
 class _lain_link_inst_pool(object):
 
@@ -121,9 +166,16 @@ class _lain_chain(object):
     def __init__(self, root, metachain = None, reverse = False):
         assert isinstance(root, lain_link)
         assert metachain is None or isinstance(metachain, _lain_chain)
-        self._root = root
-        self._meta = metachain
         self._reverse = reverse
+        self._root = root
+        self._root_stamp = self._cur_root_stamp()
+        self._meta = metachain
+
+    def _cur_root_stamp(self):
+        if self.reverse:
+            return self.root.stampl
+        else:
+            return self.root.stampu
 
     def _traversal_h(self, root = None, walked = None):
         if self.meta is None:
@@ -183,15 +235,16 @@ class _lain_chain(object):
 
     @lazypropdh
     def links(self):
-        #print self.root, 'links calc'
+        print self.root, 'links calc'
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
             pass #do nothing
+        self._root_stamp = self._cur_root_stamp()
         return rs
 
     def links_dirty(self):
-        pass
+        return self._cur_root_stamp() > self._root_stamp
 
     def get_links(self, root_out = False):
         rs = self.links.copy()
@@ -246,7 +299,12 @@ class _lain_chain(object):
             #return False
             raise TypeError('checked type should be link')
         return link in self.links
-    
+
+class _lain_any_chain(_lain_chain):
+    def __contains__(self, dest):
+        return True
+LainAnyChain = _lain_any_chain(lain_link(), None, False)
+
 def test():
     class nd(lain_link):
 
@@ -265,10 +323,13 @@ def test():
     nds[4].link_from(nds[1], tag)
     nds[2].link_to(nds[5], tag)
     nds[2].link_to(nds[6], tag)
-    nds[1].link_to(nds[2], tag)
+    #nds[1].link_to(nds[2], tag)
     tagch = tag.chain()
     ch = nds[0].chain(tagch)
     chrv = _lain_chain(nds[6], tagch, True)
+    print ch.links
+    print chrv.links
+    nds[1].link_to(nds[2], tag)
     return ch, chrv
 
 if __name__ == '__main__':
