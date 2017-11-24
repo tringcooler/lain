@@ -55,6 +55,10 @@ class _lain_link_inst_pool(object):
         else:
             return None
 
+    @lazyprop
+    def another(self):
+        pass
+
 @roprop('desc')
 @roprop('head')
 @roprop('tail')
@@ -156,13 +160,17 @@ class _lain_chain(object):
                 for cli in self._traversal_v(cnode, walked):
                     yield cli
 
-    @lazyprop
+    @lazypropdh
     def links(self):
+        print self.root, 'calc'
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
             pass #do nothing
         return rs
+
+    def links_dirty(self):
+        pass
 
     def split(self, metachain):
         vlpool = {}
