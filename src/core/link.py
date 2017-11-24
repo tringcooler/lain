@@ -23,7 +23,7 @@ class lain_link(object):
     def link_to(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
-        print self, '->', dest
+        #print self, '->', dest
         _lain_link_inst(link, self, dest)
         self.stampu = None
         dest.stampl = None
@@ -31,7 +31,7 @@ class lain_link(object):
     def link_from(self, dest, link):
         assert isinstance(dest, lain_link)
         assert isinstance(link, lain_link)
-        print self, '<-', dest
+        #print self, '<-', dest
         _lain_link_inst(link, dest, self)
         dest.stampu = None
         self.stampl = None
@@ -237,7 +237,7 @@ class _lain_chain(object):
 
     @lazypropdh
     def links(self):
-        print self.root, 'links calc'
+        #print self.root, 'links calc'
         rs = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
@@ -292,6 +292,7 @@ class _lain_chain(object):
     @iseq
     def __eq__(self, dest):
         return (isinstance(dest, _lain_chain)
+            and type(self) == type(dest)
             and self.root == dest.root
             and self.meta == dest.meta
             and self.reverse == dest.reverse)
@@ -307,9 +308,30 @@ class _lain_chain(object):
         return link in self.links
 
 class _lain_any_chain(_lain_chain):
+    def split(self, metachain):
+        return [self]
     def __contains__(self, dest):
         return True
 LainAnyChain = _lain_any_chain(lain_link(), None, False)
+
+class _lain_co_chain(_lain_chain):
+    def split(self, metachain):
+        rs = super(_lain_co_chain, self).split(metachain)
+        return [LainCoChain(ch) for ch in rs]
+    def __contains__(self, dest):
+        return not super(_lain_co_chain, self).__contains__(dest)
+
+def LainCoChain(ch):
+    if ch is None:
+        return LainAnyChain
+    elif ch is LainAnyChain:
+        return None
+    elif isinstance(ch, _lain_co_chain):
+        return _lain_chain(ch.root, ch.meta, ch.reverse)
+    elif isinstance(ch, _lain_chain):
+        return _lain_co_chain(ch.root, ch.meta, ch.reverse)
+    else:
+        raise TypeError('should be a lain chain')
 
 def test():
     class nd(lain_link):
