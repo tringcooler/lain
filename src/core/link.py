@@ -48,13 +48,15 @@ class lain_link(object):
 
     @stampu.setter
     def stampu(self, v):
-        self._stamp[0] = lain_link._stamp_index
+        cstamp = lain_link._stamp_index
         lain_link._stamp_index += 1
+        self._stamp[0] = cstamp
         if len(self.parent) > 0:
             for l in self.upper.links:
                 if l is self:
                     continue
-                l.stampu = None
+                #l.stampu = None
+                l._stamp[0] = cstamp
 
     @property
     def stampl(self):
@@ -62,13 +64,15 @@ class lain_link(object):
 
     @stampl.setter
     def stampl(self, v):
-        self._stamp[1] = lain_link._stamp_index
+        cstamp = lain_link._stamp_index
         lain_link._stamp_index += 1
+        self._stamp[1] = cstamp
         if len(self.parent) > 0:
             for l in self.lower.links:
                 if l is self:
                     continue
-                l.stampl = None
+                #l.stampl = None
+                l._stamp[1] = cstamp
 
     def chain(self, metachain = None):
         return _lain_chain(self, metachain, False)
@@ -424,6 +428,11 @@ def test():
     print isond.lower.links
     #LainSpreadChain.cut()
     LainIsolateLink.reset()
+    print ch.root.upper.links
+    print ch.root.lower.links
+    print isond.upper.links
+    print isond.lower.links
+    LainIsolateLink.isolate(isolink)
     print ch.root.upper.links
     print ch.root.lower.links
     print isond.upper.links
