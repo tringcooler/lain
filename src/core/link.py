@@ -350,13 +350,17 @@ def LainCoChain(ch):
         raise TypeError('should be a lain chain')
 
 class _lain_isolate_link(lain_link):
-    def isolate(self):
+    def isolate(self, link):
+        self.link_to(link, LainIsolateMeta)
+    def reset(self):
         for li in self.child.foreach():
             li.cut()
         for li in self.parent.foreach():
             li.cut()
 LainIsolateLink = _lain_isolate_link()
-LainSpreadChain = _lain_co_chain(LainIsolateLink, LainAnyChain, False)
+LainIsolateMeta = lain_link()
+LainSpreadChain = _lain_co_chain(
+    LainIsolateLink, LainIsolateMeta.chain(), False)
 
 def test():
     class nd(lain_link):
@@ -411,8 +415,7 @@ def test():
         print
     isond = nd('iso')
     isolink = nd('isolink')
-    isometa = nd('isometa')
-    isolink.link_from(LainIsolateLink, isometa)
+    LainIsolateLink.isolate(isolink)
     isond.link_to(nds[0], isolink)
     print '===='
     print ch.root.upper.links
@@ -420,7 +423,7 @@ def test():
     print isond.upper.links
     print isond.lower.links
     #LainSpreadChain.cut()
-    LainIsolateLink.isolate()
+    LainIsolateLink.reset()
     print ch.root.upper.links
     print ch.root.lower.links
     print isond.upper.links
