@@ -242,8 +242,12 @@ class _lain_chain(object):
         return rs
 
     def links_dirty(self):
+        if self.reverse:
+            succ = self.root.parent
+        else:
+            succ = self.root.child
         return (self._cur_stamp() > self._stamp
-                or (self.meta and self.meta.links_dirty()))
+                or (len(succ) > 0 and self.meta and self.meta.links_dirty()))
 
     def get_links(self, root_out = False):
         rs = self.links.copy()
