@@ -30,33 +30,14 @@ class lain_link(object):
         assert isinstance(link, lain_link)
         _lain_link_inst(link, dest, self)
 
-    def stable(self):
-        self.upper = None
-        self.lower = None
-
-    @lazypropdd
-    def upper(self):
-        return _lain_chain(self, LainSpreadChain, True)
-
-    @lazypropdd
-    def lower(self):
-        return _lain_chain(self, LainSpreadChain, False)
-
     @property
     def stampu(self):
         return self._stamp[0]
 
     @stampu.setter
     def stampu(self, v):
-        cstamp = lain_link._stamp_index
+        self._stamp[0] = lain_link._stamp_index
         lain_link._stamp_index += 1
-        self._stamp[0] = cstamp
-        if len(self.parent) > 0:
-            for l in self.upper.links:
-                if l is self:
-                    continue
-                #l.stampu = None
-                l._stamp[0] = cstamp
 
     @property
     def stampl(self):
@@ -64,15 +45,8 @@ class lain_link(object):
 
     @stampl.setter
     def stampl(self, v):
-        cstamp = lain_link._stamp_index
+        self._stamp[1] = lain_link._stamp_index
         lain_link._stamp_index += 1
-        self._stamp[1] = cstamp
-        if len(self.parent) > 0:
-            for l in self.lower.links:
-                if l is self:
-                    continue
-                #l.stampl = None
-                l._stamp[1] = cstamp
 
     def chain(self, metachain = None):
         return _lain_chain(self, metachain, False)
@@ -180,16 +154,6 @@ class _lain_chain(object):
         self._reverse = reverse
         self._root = root
         self._meta = metachain
-        self._root_stamp = self._cur_root_stamp()
-
-    def _cur_root_stamp(self):
-        if self.reverse:
-            rs = (self.root.stampl,)
-        else:
-            rs = (self.root.stampu,)
-        if self.meta:
-            rs += self.meta._root_stamp
-        return rs
 
     def _traversal_h(self, root = None, walked = None):
         if self.meta is None:
@@ -247,6 +211,26 @@ class _lain_chain(object):
                 for cli in self._traversal_v(cnode, walked):
                     yield cli
 
+    def _cur_stamp(self, links = None):
+        if links is None:
+            links = self._links
+        stamp = 0
+        for l in links:
+            if self.reverse:
+                cstamp = l.stampl
+            else:
+                cstamp = l.stampu
+            if cstamp > stamp:
+                stamp = cstamp
+        rs = (stamp,)
+        if self.reverse:
+            succ = self.root.parent
+        else:
+            succ = self.root.child
+        if len(succ) > 0 and self.meta:
+            rs += self.meta._stamp
+        return rs
+
     @lazypropdh
     def links(self):
         print self.root, 'links calc'
@@ -254,11 +238,11 @@ class _lain_chain(object):
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
             pass #do nothing
-        self._root_stamp = self._cur_root_stamp()
+        self._stamp = self._cur_stamp(rs)
         return rs
 
     def links_dirty(self):
-        return (self._cur_root_stamp() > self._root_stamp
+        return (self._cur_stamp() > self._stamp
                 or (self.meta and self.meta.links_dirty()))
 
     def get_links(self, root_out = False):
@@ -353,19 +337,6 @@ def LainCoChain(ch):
     else:
         raise TypeError('should be a lain chain')
 
-class _lain_isolate_link(lain_link):
-    def isolate(self, link):
-        self.link_to(link, LainIsolateMeta)
-    def reset(self):
-        for li in self.child.foreach():
-            li.cut()
-        for li in self.parent.foreach():
-            li.cut()
-LainIsolateLink = _lain_isolate_link()
-LainIsolateMeta = lain_link()
-LainSpreadChain = _lain_co_chain(
-    LainIsolateLink, LainIsolateMeta.chain(), False)
-
 def test():
     class nd(lain_link):
 
@@ -387,56 +358,13 @@ def test():
     #nds[1].link_to(nds[2], tag)
     tagch = tag.chain()
     ch = nds[0].chain(tagch)
-    for l in ch.links:
-        print 'stable', l,
-        if hasattr(l, '_upper'):
-                print 'u',
-        if hasattr(l, '_lower'):
-                print 'l',
-        print
-    ch.stable()
     chrv = _lain_chain(nds[6], tagch, True)
     print ch.links
     print chrv.links
     nds[1].link_to(nds[2], tag)
     print ch.links
     print chrv.links
-    for l in ch.links:
-        print 'stable', l,
-        if hasattr(l, '_upper'):
-                print 'u',
-        if hasattr(l, '_lower'):
-                print 'l',
-        print
-    ch.stable()
     nds[3].link_to(nds[4], tag)
-    for l in ch.links:
-        print 'stable', l,
-        if hasattr(l, '_upper'):
-                print 'u',
-        if hasattr(l, '_lower'):
-                print 'l',
-        print
-    isond = nd('iso')
-    isolink = nd('isolink')
-    LainIsolateLink.isolate(isolink)
-    isond.link_to(nds[0], isolink)
-    print '===='
-    print ch.root.upper.links
-    print ch.root.lower.links
-    print isond.upper.links
-    print isond.lower.links
-    #LainSpreadChain.cut()
-    LainIsolateLink.reset()
-    print ch.root.upper.links
-    print ch.root.lower.links
-    print isond.upper.links
-    print isond.lower.links
-    LainIsolateLink.isolate(isolink)
-    print ch.root.upper.links
-    print ch.root.lower.links
-    print isond.upper.links
-    print isond.lower.links
     print '===='
     ndm0 = nd('m0')
     ndm1o = nd('m1o')
@@ -454,15 +382,15 @@ def test():
     chm3 = ndm3o.chain(chm2)
     print chm3.links
     chm1.cut()
-    print chm3._root_stamp, chm3._cur_root_stamp(), chm3.links_dirty()
-    print chm2._root_stamp, chm2._cur_root_stamp(), chm2.links_dirty()
-    print chm1._root_stamp, chm1._cur_root_stamp(), chm1.links_dirty()
+    print chm3._stamp, chm3._cur_stamp(), chm3.links_dirty()
+    print chm2._stamp, chm2._cur_stamp(), chm2.links_dirty()
+    print chm1._stamp, chm1._cur_stamp(), chm1.links_dirty()
     print chm1.links
-    print chm3._root_stamp, chm3._cur_root_stamp(), chm3.links_dirty()
-    print chm2._root_stamp, chm2._cur_root_stamp(), chm2.links_dirty()
-    print chm1._root_stamp, chm1._cur_root_stamp(), chm1.links_dirty()
+    print chm3._stamp, chm3._cur_stamp(), chm3.links_dirty()
+    print chm2._stamp, chm2._cur_stamp(), chm2.links_dirty()
+    print chm1._stamp, chm1._cur_stamp(), chm1.links_dirty()
     print chm3.links
-    return ch, chrv, isond
+    return ch, chrv
 
 if __name__ == '__main__':
-    ch, chrv, isond = test()
+    ch, chrv = test()
