@@ -262,8 +262,9 @@ class _lain_chain(object):
         for li in lis:
             li.cut()
 
-    def split(self, metachain):
-        vlpool = {}
+    def _merge_to_vlpool(self, metachain, vlpool = None):
+        if vlpool is None:
+            vlpool = {}
         for li in self._traversal_v(self.root):
             if li in metachain:
                 if not li.head in vlpool:
@@ -286,16 +287,27 @@ class _lain_chain(object):
                         if vch.top == li.tail:
                             raise RuntimeError('loop chain', li.tail)
                         vct.vlink(vch)
+        return vlpool
+                        
+    def _vlpool_to_chains(self, vlpool, metachain, reverse):
         chains = {}
         for l in vlpool:
             top = vlpool[l].top
             if not top in chains:
-                chains[top] = _lain_chain(top, metachain, self.reverse)
+                chains[top] = _lain_chain(top, metachain, reverse)
         return chains.values()
 
-    def stable(self):
-        for l in self.links:
-            l.stable()
+    def split(self, metachain):
+        vlpool = self._merge_to_vlpool(metachain);
+        return self._vlpool_to_chains(vlpool, metachain, self.reverse)
+
+    def merge(self, chains):
+        vlpool = self._merge_to_vlpool(self.meta);
+        for chain in chains:
+            if chain is self:
+                continue
+            chain._merge_to_vlpool(chain.meta, vlpool)
+        return self._merge
     
     @iseq
     def __eq__(self, dest):
