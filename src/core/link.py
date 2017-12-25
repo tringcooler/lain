@@ -289,25 +289,27 @@ class _lain_chain(object):
                         vct.vlink(vch)
         return vlpool
                         
-    def _vlpool_to_chains(self, vlpool, metachain, reverse):
+    def _vlpool_to_chains(self, vlpool, metachain):
         chains = {}
         for l in vlpool:
             top = vlpool[l].top
             if not top in chains:
-                chains[top] = _lain_chain(top, metachain, reverse)
+                chains[top] = _lain_chain(top, metachain, self.reverse)
         return chains.values()
 
     def split(self, metachain):
         vlpool = self._merge_to_vlpool(metachain);
-        return self._vlpool_to_chains(vlpool, metachain, self.reverse)
+        return self._vlpool_to_chains(vlpool, metachain)
 
     def merge(self, chains):
         vlpool = self._merge_to_vlpool(self.meta);
         for chain in chains:
             if chain is self:
                 continue
+            if not chain.reverse == self.reverse:
+                raise ValueError('can not merge chains with different direct')
             chain._merge_to_vlpool(chain.meta, vlpool)
-        return self._merge
+        return self._vlpool_to_chains(vlpool, self.meta)
     
     @iseq
     def __eq__(self, dest):
