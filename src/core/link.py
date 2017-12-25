@@ -235,9 +235,12 @@ class _lain_chain(object):
     def links(self):
         print self.root, 'links calc'
         rs = set()
+        self._non_init_links = set()
+        self._non_term_links = set()
         rs.add(self.root)
         for li in self._traversal_v(self.root, rs):
-            pass #do nothing
+            self._non_term_links.add(li.head)
+            self._non_init_links.add(li.tail)
         self._stamp = self._cur_stamp(rs)
         return rs
 
@@ -248,6 +251,24 @@ class _lain_chain(object):
             succ = self.root.child
         return (self._cur_stamp() > self._stamp
                 or (len(succ) > 0 and self.meta and self.meta.links_dirty()))
+
+    @property
+    def non_init_links(self):
+        _t = self.links
+        return self._non_init_links
+
+    @property
+    def non_term_links(self):
+        _t = self.links
+        return self._non_term_links
+
+    @property
+    def init_links(self):
+        return self.links.difference(self.non_init_links)
+
+    @property
+    def term_links(self):
+        return self.links.difference(self.non_term_links)
 
     def get_links(self, root_out = False):
         rs = self.links.copy()
