@@ -60,7 +60,8 @@ class lain_link(object):
             desc = li.desc
             li.cut()
             _lain_link_inst(desc, dest, tl)
-        assert len(self.inst) == 0
+        for li in self.inst.foreach():
+            li.redesc(dest)
 
     def merge(self, dest):
         return dest.merge_to(self)
@@ -68,8 +69,10 @@ class lain_link(object):
     def remove(self):
         for li in self.inst.foreach():
             li.cut()
-        assert len(self.parent) == 0
-        assert len(self.child) == 0
+        for li in self.parent.foreach():
+            li.cut()
+        for li in self.child.foreach():
+            li.cut()
 
     @property
     def stampu(self):
@@ -98,8 +101,9 @@ class _lain_link_inst_pool(object):
         self._pool = []
 
     def foreach(self):
-        for i in self._pool:
-            yield i
+        # reverse order for cut
+        for i in xrange(len(self._pool) - 1, -1, -1):
+            yield self._pool[i]
 
     def __len__(self):
         return len(self._pool)
@@ -489,6 +493,21 @@ def test():
     print chm2._stamp, chm2._cur_stamp(), chm2.links_dirty()
     print chm1._stamp, chm1._cur_stamp(), chm1.links_dirty()
     print chm3.links
+    print '===='
+    print [i for i in nds[1].inst.foreach()]
+    print [i for i in nds[1].parent.foreach()]
+    print [i for i in nds[1].child.foreach()]
+    print [i for i in nds[2].inst.foreach()]
+    print [i for i in nds[2].parent.foreach()]
+    print [i for i in nds[2].child.foreach()]
+    nds[1].merge(nds[2])
+    print ch.links
+    print [i for i in nds[1].inst.foreach()]
+    print [i for i in nds[1].parent.foreach()]
+    print [i for i in nds[1].child.foreach()]
+    print [i for i in nds[2].inst.foreach()]
+    print [i for i in nds[2].parent.foreach()]
+    print [i for i in nds[2].child.foreach()]
     return ch, chrv
 
 if __name__ == '__main__':
