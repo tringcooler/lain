@@ -30,6 +30,46 @@ class lain_link(object):
         assert isinstance(link, lain_link)
         _lain_link_inst(link, dest, self)
 
+    def split(self, split_metachain = None, split_chain = None):
+        nl = lain_link()
+        if not split_metachain is None:
+            for li in self.parent.foreach():
+                if li in split_metachain:
+                    hd = li.head
+                    desc = li.desc
+                    li.cut()
+                    _lain_link_inst(desc, hd, nl)
+            for li in self.child.foreach():
+                if li in split_metachain:
+                    tl = li.tail
+                    desc = li.desc
+                    li.cut()
+                    _lain_link_inst(desc, nl, tl)
+        if not split_chain is None:
+            split_chain.redesc(self, nl)
+        return nl
+
+    def merge(self, dest):
+        for li in dest.parent.foreach():
+            hd = li.head
+            desc = li.desc
+            li.cut()
+            _lain_link_inst(desc, hd, self)
+        for li in dest.child.foreach():
+            tl = li.tail
+            desc = li.desc
+            li.cut()
+            _lain_link_inst(desc, self, tl)
+        assert len(dest.inst) == 0
+
+    def remove(self):
+        for li in self.inst.foreach():
+            li.cut()
+        for li in self.parent.foreach():
+            li.cut()
+        for li in self.child.foreach():
+            li.cut()
+
     @property
     def stampu(self):
         return self._stamp[0]
@@ -118,6 +158,15 @@ class _lain_link_inst(object):
         self.desc.inst.remove(self)
         self.head.child.remove(self)
         self.tail.parent.remove(self)
+        self.head.stampu = None
+        self.tail.stampl = None
+
+    def redesc(self, desc):
+        if self.desc == desc: return
+        print 'redesc', self.head, '->', self.tail, self.desc, 'to', desc
+        self.desc.inst.remove(self)
+        self._desc = desc
+        self.desc.inst.add(self)
         self.head.stampu = None
         self.tail.stampl = None
 
@@ -278,10 +327,18 @@ class _lain_chain(object):
 
     def cut(self, metachain = None):
         lis = []
-        for li in self._traversal_v(self.root, None):
+        for li in self._traversal_v(self.root):
             lis.append(li)
         for li in lis:
             li.cut()
+
+    def redesc(self, old, new):
+        old = self._get_link_desc(old)
+        new = self._get_link_desc(new)
+        if old == new: return
+        for li in self._traversal_v(self.root):
+            if li.desc == old:
+                li.redesc(new)
 
     def _merge_to_vlpool(self, metachain, vlpool = None):
         if vlpool is None:
@@ -339,15 +396,17 @@ class _lain_chain(object):
             and self.root == dest.root
             and self.meta == dest.meta
             and self.reverse == dest.reverse)
+
+    def _get_link_desc(self, link):
+        if isinstance(link, _lain_link_inst):
+            return link.desc
+        elif isinstance(link, lain_link):
+            return link
+        else:
+            raise TypeError('checked type should be link')
     
     def __contains__(self, dest):
-        if isinstance(dest, _lain_link_inst):
-            link = dest.desc
-        elif isinstance(dest, lain_link):
-            link = dest
-        else:
-            #return False
-            raise TypeError('checked type should be link')
+        link = self._get_link_desc(dest)
         return link in self.links
 
 class _lain_any_chain(_lain_chain):
