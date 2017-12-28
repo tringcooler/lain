@@ -49,26 +49,27 @@ class lain_link(object):
             split_chain.redesc(self, nl)
         return nl
 
-    def merge(self, dest):
-        for li in dest.parent.foreach():
+    def merge_to(self, dest):
+        for li in self.parent.foreach():
             hd = li.head
             desc = li.desc
             li.cut()
-            _lain_link_inst(desc, hd, self)
-        for li in dest.child.foreach():
+            _lain_link_inst(desc, hd, dest)
+        for li in self.child.foreach():
             tl = li.tail
             desc = li.desc
             li.cut()
-            _lain_link_inst(desc, self, tl)
-        assert len(dest.inst) == 0
+            _lain_link_inst(desc, dest, tl)
+        assert len(self.inst) == 0
+
+    def merge(self, dest):
+        return dest.merge_to(self)
 
     def remove(self):
         for li in self.inst.foreach():
             li.cut()
-        for li in self.parent.foreach():
-            li.cut()
-        for li in self.child.foreach():
-            li.cut()
+        assert len(self.parent) == 0
+        assert len(self.child) == 0
 
     @property
     def stampu(self):
