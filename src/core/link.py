@@ -424,22 +424,33 @@ class _lain_cluster_chain(object):
         self._meta = metachain
         self._pos_vlpool = {}
         self._neg_vlpool = {}
+        
+    def _get_vlpool(self, pos):
+        if pos:
+            return self._pos_vlpool
+        else:
+            return self._neg_vlpool
 
-    def add_li(self, li, neg = True):
+    def _dirty_vlpool(self, pos):
+        if pos:
+            self.pos_chains = None
+        else:
+            self.neg_chains = None
+
+    def update_li(self, li, pos = True):
         if not li in self.meta:
             return
-        if pos:
-            vlpool = self._pos_vlpool
-        else:
-            vlpool = self._neg_vlpool
+        vlpool = self._get_vlpool(pos)
         if not li.head in vlpool:
             vc = vchain()
             vc.top = li.head
             vlpool[li.head] = vc
+            self._dirty_vlpool(pos)
         if not li.tail in vlpool:
             vc = vchain()
             vc.top = li.tail
             vlpool[li.tail] = vc
+            self._dirty_vlpool(pos)
         vch = vlpool[li.head]
         vct = vlpool[li.tail]
         if self.reverse:
@@ -447,11 +458,30 @@ class _lain_cluster_chain(object):
                 if vct.top == li.head:
                     raise RuntimeError('loop chain', li.head)
                 vch.vlink(vct)
+                self._dirty_vlpool(pos)
         else:
             if vct.top == li.tail:
                 if vch.top == li.tail:
                     raise RuntimeError('loop chain', li.tail)
                 vct.vlink(vch)
+                self._dirty_vlpool(pos)
+
+    def _get_chains(self, pos):
+        vlpool = self._get_vlpool(pos)
+        chains = {}
+        for l in vlpool:
+            top = vlpool[l].top
+            if not top in chains:
+                chains[top] = _lain_chain(top, metachain, self.reverse)
+        return chains.values()
+        
+    @lazypropds
+    def pos_chains(self):
+        return _get_chains(True)
+
+    @lazypropds
+    def neg_chains(self):
+        return _get_chains(False)
 
 class _lain_any_chain(_lain_chain):
     def split(self, metachain):
