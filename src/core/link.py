@@ -414,6 +414,50 @@ class _lain_chain(object):
         link = self._get_link_desc(dest)
         return link in self.links
 
+@roprop('meta')
+@roprop('reverse')
+@roprop('vlpool')
+class _lain_cluster_chain(object):
+
+    def __init__(self, metachain = None, reverse = False):
+        assert metachain is None or isinstance(metachain, _lain_chain)
+        self._reverse = reverse
+        self._meta = metachain
+        self._vlpool = {}
+
+    def _get_vc_in_vlpool(self, li):
+        if not li in self.meta:
+            return None, None
+        if not li.head in self.vlpool:
+            vc = vchain()
+            vc.top = li.head
+            self.vlpool[li.head] = vc
+        if not li.tail in self.vlpool:
+            vc = vchain()
+            vc.top = li.tail
+            self.vlpool[li.tail] = vc
+        return self.vlpool[li.head], self.vlpool[li.tail]
+
+    def add_li(self, li):
+        vch, vct = self._get_vc_in_vlpool(li)
+        if (vch and vct) is None:
+            return
+        if self.reverse:
+            if vch.top == li.head:
+                if vct.top == li.head:
+                    raise RuntimeError('loop chain', li.head)
+                vch.vlink(vct)
+        else:
+            if vct.top == li.tail:
+                if vch.top == li.tail:
+                    raise RuntimeError('loop chain', li.tail)
+                vct.vlink(vch)
+
+    def remove_li(self, li):
+        if not li in self.meta:
+            return
+        
+
 class _lain_any_chain(_lain_chain):
     def split(self, metachain):
         return [self]
