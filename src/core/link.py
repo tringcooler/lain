@@ -241,12 +241,13 @@ class _lain_chain(object):
                     fifo.append(cnode)
 
     def _traversal_v(self, root = None, walked = None, bypass = None):
-        if self.meta is None:
-            return
         if root is None:
             root = self._root
         if walked is None:
             walked = set()
+        walked.add(root)
+        if self.meta is None:
+            return
         if self.reverse:
             root_succ = root.parent
         else:
@@ -295,8 +296,7 @@ class _lain_chain(object):
         rs = set()
         self._non_init_links = set()
         self._non_term_links = set()
-        rs.add(self.root)
-        for li in self._traversal_v(self.root, rs):
+        for li in self._traversal_v(None, rs):
             self._non_term_links.add(li.head)
             self._non_init_links.add(li.tail)
         self._stamp = self._cur_stamp(rs)
@@ -399,6 +399,7 @@ class _lain_cluster_chain(_lain_chain):
         self._neg_vlpool = {}
         self._chpool = {}
         self._neg_chpool = {}
+        self._is_dirty_vlpool = False
         
     def _get_vlpool(self, neg):
         if neg:
@@ -411,6 +412,7 @@ class _lain_cluster_chain(_lain_chain):
             self.neg_chains = None
         else:
             self.chains = None
+        self._is_dirty_vlpool = True
 
     def update(self, chain, neg = False):
         self._update_isolink(chain.root, neg)
@@ -472,6 +474,7 @@ class _lain_cluster_chain(_lain_chain):
             self._neg_chpool = new_chains
         else:
             self._chpool = new_chains
+        self._is_dirty_vlpool = False
         return new_chains.values()
         
     @lazypropds
@@ -498,6 +501,7 @@ class _lain_cluster_chain(_lain_chain):
         for chain in self.neg_chains:
             bypass.update(chain.links)
         for chain in self.chains:
+            chain.links #refresh chain links dirty flag
             if vorh:
                 _trv = chain._traversal_v
             else:
@@ -510,8 +514,23 @@ class _lain_cluster_chain(_lain_chain):
                 for li in _trv(chain.root, walked, bypass):
                     yield li
 
-    def _foreach_chains(self, meth, args, kargs, merg_func):
-        pass
+    def links_dirty(self):
+        if self._is_dirty_vlpool:
+            return True
+        for chain in self.chains:
+            if chain.links_dirty():
+                return True
+        for chain in self.neg_chains:
+            if chain.links_dirty():
+                return True
+        return False
+
+    @property
+    def root(self):
+        return None
+
+    def _cur_stamp(self, links = None):
+        return None
 
 class _lain_any_chain(_lain_chain):
     def split(self, metachain):
@@ -629,19 +648,22 @@ def test():
     ch1 = nds[0].chain(tagch1)
     ch2 = nds[0].chain(tagch2)
     ch2s = ch1.split(tagch2)
-    print ch2s.chains[0].root, ch2s.chains[1].root
+    print [i.root for i in ch2s.chains]
     vlpch2s = ch2s._vlpool
     print [(k, vlpch2s[k].top) for k in vlpch2s]
     ch2s = ch1.split(tagch2)
+    ch2s.update(nds[6].chain(), True)
+    print [i.root for i in ch2s.chains]
+    print [i.root for i in ch2s.neg_chains]
+    print [i for i in ch2s._traversal_v()]
     ch2sr = ch1.split(tagch3)
     for c in ch2sr.chains:
+        print 'update neg', c.root
         ch2s.update(c, True)
+    print [i.root for i in ch2s.chains]
+    print [i.root for i in ch2s.neg_chains]
     print [i for i in ch2s._traversal_v()]
-    ch2s = ch1.split(tagch2)
-    ch2sr = ch1.split(tagch3)
-    ch2s.update(nds[6].chain(), True)
-    print [i for i in ch2s._traversal_v()]
-    return ch1, ch2, ch2s
+    return ch1, ch2, ch2s, ch2sr
 
 if __name__ == '__main__':
-    ch1, ch2, ch2s = test()
+    ch1, ch2, ch2s, ch2sr = test()
