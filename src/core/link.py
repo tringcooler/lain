@@ -571,21 +571,3 @@ def test():
 
 if __name__ == '__main__':
     ch1, ch2, ch2s = test()
-    def t1():
-        vcs = [vchain() for i in xrange(6)]
-        for i, vc in enumerate(vcs):
-            vc.top = i
-        return vcs
-    vcs = t1()
-    vcs[5].vlink(vcs[3])
-    vcs[4].vlink(vcs[3])
-    vcs[3].vlink(vcs[2])
-    vcs[3].vlink(vcs[1])
-    print [vc.top for vc in vcs]
-    vcs = t1()
-    vcs[3].vlink(vcs[2])
-    vcs[5].vlink(vcs[3])
-    vcs[4].vlink(vcs[3])
-    vcs[3].vlink(vcs[1])
-    print [vc.top for vc in vcs]
-    
