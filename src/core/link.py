@@ -371,28 +371,28 @@ class _lain_chain(object):
                             raise RuntimeError('loop chain', li.tail)
                         vct.vlink(vch)
         return vlpool
-                        
-    def _vlpool_to_chains(self, vlpool, metachain):
-        chains = {}
-        for l in vlpool:
-            top = vlpool[l].top
-            if not top in chains:
-                chains[top] = _lain_chain(top, metachain, self.reverse)
-        return chains.values()
+
+    def _update_cchain(self, cchain, chain):
+        for li in chain._traversal_v():
+            cchain.update_li(li)
 
     def split(self, metachain):
-        vlpool = self._merge_to_vlpool(metachain);
-        return self._vlpool_to_chains(vlpool, metachain)
+        cchain = _lain_cluster_chain(metachain, self.reverse)
+        self._update_cchain(cchain, self)
+        return cchain
 
     def merge(self, chains):
-        vlpool = self._merge_to_vlpool(self.meta);
+        cchain = _lain_cluster_chain(self.meta, self.reverse)
+        self._update_cchain(cchain, self)
         for chain in chains:
             if chain is self:
                 continue
+            if not chain.meta == self.meta:
+                raise ValueError('can not merge chains with different meta')
             if not chain.reverse == self.reverse:
                 raise ValueError('can not merge chains with different direct')
-            chain._merge_to_vlpool(chain.meta, vlpool)
-        return self._vlpool_to_chains(vlpool, self.meta)
+            self._update_cchain(cchain, chain)
+        return cchain
     
     @iseq
     def __eq__(self, dest):
@@ -467,21 +467,22 @@ class _lain_cluster_chain(object):
                 self._dirty_vlpool(neg)
 
     def _get_chains(self, neg):
+        print 'calc vlpool -> chains'
         vlpool = self._get_vlpool(neg)
         chains = {}
         for l in vlpool:
             top = vlpool[l].top
             if not top in chains:
-                chains[top] = _lain_chain(top, metachain, self.reverse)
+                chains[top] = _lain_chain(top, self.meta, self.reverse)
         return chains.values()
         
     @lazypropds
     def chains(self):
-        return _get_chains(True)
+        return self._get_chains(False)
 
     @lazypropds
     def neg_chains(self):
-        return _get_chains(False)
+        return self._get_chains(True)
 
 class _lain_any_chain(_lain_chain):
     def split(self, metachain):
@@ -594,8 +595,8 @@ def test():
     ch1 = nds[0].chain(tagch1)
     ch2 = nds[0].chain(tagch2)
     ch2s = ch1.split(tagch2)
-    print ch2s[0].root, ch2s[1].root
-    vlpch2s = ch1._merge_to_vlpool(tagch2)
+    print ch2s.chains[0].root, ch2s.chains[1].root
+    vlpch2s = ch2s._vlpool
     print [(k, vlpch2s[k].top) for k in vlpch2s]
     return ch1, ch2, ch2s
 
