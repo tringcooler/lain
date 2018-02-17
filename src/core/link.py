@@ -693,6 +693,9 @@ def test():
     print [i.root for i in ch2s.chains]
     print [i.root for i in ch2s.neg_chains]
     print [i for i in ch2s._traversal_v()]
+    ch1s = ch1.split(tagch1)
+    print ch1s == ch1
+    print ch1s == ch1
     return ch1, ch2, ch2s, ch2sr, tagch1
 
 if __name__ == '__main__':
