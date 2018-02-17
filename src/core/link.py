@@ -369,11 +369,24 @@ class _lain_chain(object):
     
     @iseq
     def __eq__(self, dest):
-        return (isinstance(dest, _lain_chain)
-            and type(self) == type(dest)
-            and self.root == dest.root
+        if not (isinstance(dest, _lain_chain)
             and self.meta == dest.meta
-            and self.reverse == dest.reverse)
+            and self.reverse == dest.reverse):
+            return False
+        def _och(ch):
+            if isinstance(ch, _lain_cluster_chain):
+                return ch.trivial
+            else:
+                return ch
+        s = _och(self)
+        d = _och(dest)
+        if s and d:
+            return s.root == d.root
+        elif s or d:
+            return False
+        else:
+            return (sorted(s.chains) == sorted(d.chains)
+                and sorted(s.neg_chains) == sorted(d.neg_chains))
 
     def _get_link_desc(self, link):
         if isinstance(link, _lain_link_inst):
@@ -415,14 +428,16 @@ class _lain_cluster_chain(_lain_chain):
         self._is_dirty_vlpool = True
 
     def update(self, chain, neg = False):
-        if neg: # only for neg chain
-            self._update_isolink(chain.root, neg)
+        _isoroot = True
         for li in chain._traversal_v():
+            _isoroot = False
             self._update_li(li, neg)
+        if _isoroot:
+            self._update_isolink(chain.root, neg)
 
     def _update_isolink(self, link, neg):
         vlpool = self._get_vlpool(neg)
-        if not link in vlpool:
+        if link and not link in vlpool:
             vc = vchain()
             vc.top = link
             vlpool[link] = vc
@@ -485,6 +500,20 @@ class _lain_cluster_chain(_lain_chain):
     @lazypropds
     def neg_chains(self):
         return self._get_chains(True)
+
+    @lazypropdh
+    def trivial(self):
+        if not len(self.chains) == 1:
+            return None
+        och = self.chains[0]
+        och.links #refresh chain links dirty flag
+        for chain in self.neg_chains:
+            if och.links.intersection(chain.links):
+                return None
+        return och
+
+    def trivial_dirty(self):
+        return self.links_dirty()
 
     def _traversal_h(self, root = None, walked = None, bypass = None):
         return self._traversal_x(root, walked, bypass, False)
@@ -664,7 +693,7 @@ def test():
     print [i.root for i in ch2s.chains]
     print [i.root for i in ch2s.neg_chains]
     print [i for i in ch2s._traversal_v()]
-    return ch1, ch2, ch2s, ch2sr
+    return ch1, ch2, ch2s, ch2sr, tagch1
 
 if __name__ == '__main__':
-    ch1, ch2, ch2s, ch2sr = test()
+    ch1, ch2, ch2s, ch2sr, tagch1 = test()
