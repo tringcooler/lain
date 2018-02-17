@@ -422,35 +422,35 @@ class _lain_cluster_chain(object):
         assert metachain is None or isinstance(metachain, _lain_chain)
         self._reverse = reverse
         self._meta = metachain
-        self._pos_vlpool = {}
+        self._vlpool = {}
         self._neg_vlpool = {}
         
-    def _get_vlpool(self, pos):
-        if pos:
-            return self._pos_vlpool
-        else:
+    def _get_vlpool(self, neg):
+        if neg:
             return self._neg_vlpool
-
-    def _dirty_vlpool(self, pos):
-        if pos:
-            self.pos_chains = None
         else:
-            self.neg_chains = None
+            return self._vlpool
 
-    def update_li(self, li, pos = True):
+    def _dirty_vlpool(self, neg):
+        if neg:
+            self.neg_chains = None
+        else:
+            self.chains = None
+
+    def update_li(self, li, neg = False):
         if not li in self.meta:
             return
-        vlpool = self._get_vlpool(pos)
+        vlpool = self._get_vlpool(neg)
         if not li.head in vlpool:
             vc = vchain()
             vc.top = li.head
             vlpool[li.head] = vc
-            self._dirty_vlpool(pos)
+            self._dirty_vlpool(neg)
         if not li.tail in vlpool:
             vc = vchain()
             vc.top = li.tail
             vlpool[li.tail] = vc
-            self._dirty_vlpool(pos)
+            self._dirty_vlpool(neg)
         vch = vlpool[li.head]
         vct = vlpool[li.tail]
         if self.reverse:
@@ -458,16 +458,16 @@ class _lain_cluster_chain(object):
                 if vct.top == li.head:
                     raise RuntimeError('loop chain', li.head)
                 vch.vlink(vct)
-                self._dirty_vlpool(pos)
+                self._dirty_vlpool(neg)
         else:
             if vct.top == li.tail:
                 if vch.top == li.tail:
                     raise RuntimeError('loop chain', li.tail)
                 vct.vlink(vch)
-                self._dirty_vlpool(pos)
+                self._dirty_vlpool(neg)
 
-    def _get_chains(self, pos):
-        vlpool = self._get_vlpool(pos)
+    def _get_chains(self, neg):
+        vlpool = self._get_vlpool(neg)
         chains = {}
         for l in vlpool:
             top = vlpool[l].top
@@ -476,7 +476,7 @@ class _lain_cluster_chain(object):
         return chains.values()
         
     @lazypropds
-    def pos_chains(self):
+    def chains(self):
         return _get_chains(True)
 
     @lazypropds
