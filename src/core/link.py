@@ -422,10 +422,36 @@ class _lain_cluster_chain(object):
         assert metachain is None or isinstance(metachain, _lain_chain)
         self._reverse = reverse
         self._meta = metachain
-        self._pos_root = []
-        self._neg_root = []
+        self._pos_vlpool = {}
+        self._neg_vlpool = {}
 
-    
+    def add_li(self, li, neg = True):
+        if not li in self.meta:
+            return
+        if pos:
+            vlpool = self._pos_vlpool
+        else:
+            vlpool = self._neg_vlpool
+        if not li.head in vlpool:
+            vc = vchain()
+            vc.top = li.head
+            vlpool[li.head] = vc
+        if not li.tail in vlpool:
+            vc = vchain()
+            vc.top = li.tail
+            vlpool[li.tail] = vc
+        vch = vlpool[li.head]
+        vct = vlpool[li.tail]
+        if self.reverse:
+            if vch.top == li.head:
+                if vct.top == li.head:
+                    raise RuntimeError('loop chain', li.head)
+                vch.vlink(vct)
+        else:
+            if vct.top == li.tail:
+                if vch.top == li.tail:
+                    raise RuntimeError('loop chain', li.tail)
+                vct.vlink(vch)
 
 class _lain_any_chain(_lain_chain):
     def split(self, metachain):
