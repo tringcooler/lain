@@ -209,7 +209,7 @@ class _lain_chain(object):
         self._root = root
         self._meta = metachain
 
-    def _traversal_h(self, root = None, walked = None):
+    def _traversal_h(self, root = None, walked = None, bypass = None):
         if self.meta is None:
             return
         if root is None:
@@ -226,7 +226,6 @@ class _lain_chain(object):
             for li in node_succ.foreach():
                 if not li in self.meta:
                     continue
-                yield li
                 #cnode = li.another(node)
                 if self.reverse:
                     assert li.tail == node
@@ -234,11 +233,14 @@ class _lain_chain(object):
                 else:
                     assert li.head == node
                     cnode = li.tail
+                if bypass and cnode in bypass:
+                    continue
+                yield li
                 if not cnode in walked:
                     walked.add(cnode)
                     fifo.append(cnode)
 
-    def _traversal_v(self, root = None, walked = None):
+    def _traversal_v(self, root = None, walked = None, bypass = None):
         if self.meta is None:
             return
         if root is None:
@@ -252,7 +254,6 @@ class _lain_chain(object):
         for li in root_succ.foreach():
             if not li in self.meta:
                 continue
-            yield li
             #cnode = li.another(root)
             if self.reverse:
                 assert li.tail == root
@@ -260,9 +261,12 @@ class _lain_chain(object):
             else:
                 assert li.head == root
                 cnode = li.tail
+            if bypass and cnode in bypass:
+                continue
+            yield li
             if not cnode in walked:
                 walked.add(cnode)
-                for cli in self._traversal_v(cnode, walked):
+                for cli in self._traversal_v(cnode, walked, bypass):
                     yield cli
 
     def _cur_stamp(self, links = None):
@@ -332,7 +336,7 @@ class _lain_chain(object):
 
     def cut(self, metachain = None):
         lis = []
-        for li in self._traversal_v(self.root):
+        for li in self._traversal_v():
             lis.append(li)
         for li in lis:
             li.cut()
@@ -341,36 +345,9 @@ class _lain_chain(object):
         old = self._get_link_desc(old)
         new = self._get_link_desc(new)
         if old == new: return
-        for li in self._traversal_v(self.root):
+        for li in self._traversal_v():
             if li.desc == old:
                 li.redesc(new)
-
-    def _merge_to_vlpool(self, metachain, vlpool = None):
-        if vlpool is None:
-            vlpool = {}
-        for li in self._traversal_v(self.root):
-            if li in metachain:
-                if not li.head in vlpool:
-                    vc = vchain()
-                    vc.top = li.head
-                    vlpool[li.head] = vc
-                if not li.tail in vlpool:
-                    vc = vchain()
-                    vc.top = li.tail
-                    vlpool[li.tail] = vc
-                vch = vlpool[li.head]
-                vct = vlpool[li.tail]
-                if self.reverse:
-                    if vch.top == li.head:
-                        if vct.top == li.head:
-                            raise RuntimeError('loop chain', li.head)
-                        vch.vlink(vct)
-                else:
-                    if vct.top == li.tail:
-                        if vch.top == li.tail:
-                            raise RuntimeError('loop chain', li.tail)
-                        vct.vlink(vch)
-        return vlpool
 
     def split(self, metachain):
         cchain = _lain_cluster_chain(metachain, self.reverse)
@@ -436,10 +413,19 @@ class _lain_cluster_chain(_lain_chain):
             self.chains = None
 
     def update(self, chain, neg = False):
+        self._update_isolink(chain.root, neg)
         for li in chain._traversal_v():
             self._update_li(li, neg)
 
-    def _update_li(self, li, neg = False):
+    def _update_isolink(self, link, neg):
+        vlpool = self._get_vlpool(neg)
+        if not link in vlpool:
+            vc = vchain()
+            vc.top = link
+            vlpool[link] = vc
+            self._dirty_vlpool(neg)
+
+    def _update_li(self, li, neg):
         if not li in self.meta:
             return
         vlpool = self._get_vlpool(neg)
@@ -496,24 +482,32 @@ class _lain_cluster_chain(_lain_chain):
     def neg_chains(self):
         return self._get_chains(True)
 
-    def _traversal_h(self, root = None, walked = None):
-        raise NotImplementedError('not used')
+    def _traversal_h(self, root = None, walked = None, bypass = None):
+        return self._traversal_x(root, walked, bypass, False)
+
+    def _traversal_v(self, root = None, walked = None, bypass = None):
+        return self._traversal_x(root, walked, bypass, True)
     
-    def _traversal_v(self, root = None, walked = None):
+    def _traversal_x(self, root, walked, bypass, vorh):
         if self.meta is None:
             return
         if walked is None:
             walked = set()
-        def _trv_ch(root, walked):
-            for li in chain._traversal_v(root):
-                pass
+        if bypass is None:
+            bypass = set()
+        for chain in self.neg_chains:
+            bypass.update(chain.links)
         for chain in self.chains:
+            if vorh:
+                _trv = chain._traversal_v
+            else:
+                _trv = chain._traversal_h
             if root and root in chain.links:
-                for li in _trv_ch(root, walked):
+                for li in _trv(root, walked, bypass):
                     yield li
                 return
             elif root is None:
-                for li in _trv_ch(chain.root, walked):
+                for li in _trv(chain.root, walked, bypass):
                     yield li
 
     def _foreach_chains(self, meth, args, kargs, merg_func):
@@ -635,12 +629,18 @@ def test():
     ch1 = nds[0].chain(tagch1)
     ch2 = nds[0].chain(tagch2)
     ch2s = ch1.split(tagch2)
-    ch2sr = ch1.split(tagch3)
-    for c in ch2sr.chains:
-        ch2s.update(c, True)
     print ch2s.chains[0].root, ch2s.chains[1].root
     vlpch2s = ch2s._vlpool
     print [(k, vlpch2s[k].top) for k in vlpch2s]
+    ch2s = ch1.split(tagch2)
+    ch2sr = ch1.split(tagch3)
+    for c in ch2sr.chains:
+        ch2s.update(c, True)
+    print [i for i in ch2s._traversal_v()]
+    ch2s = ch1.split(tagch2)
+    ch2sr = ch1.split(tagch3)
+    ch2s.update(nds[6].chain(), True)
+    print [i for i in ch2s._traversal_v()]
     return ch1, ch2, ch2s
 
 if __name__ == '__main__':
