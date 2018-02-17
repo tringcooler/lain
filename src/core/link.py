@@ -372,18 +372,14 @@ class _lain_chain(object):
                         vct.vlink(vch)
         return vlpool
 
-    def _update_cchain(self, cchain, chain):
-        for li in chain._traversal_v():
-            cchain.update_li(li)
-
     def split(self, metachain):
         cchain = _lain_cluster_chain(metachain, self.reverse)
-        self._update_cchain(cchain, self)
+        cchain.update(self)
         return cchain
 
     def merge(self, chains):
         cchain = _lain_cluster_chain(self.meta, self.reverse)
-        self._update_cchain(cchain, self)
+        cchain.update(self)
         for chain in chains:
             if chain is self:
                 continue
@@ -391,7 +387,7 @@ class _lain_chain(object):
                 raise ValueError('can not merge chains with different meta')
             if not chain.reverse == self.reverse:
                 raise ValueError('can not merge chains with different direct')
-            self._update_cchain(cchain, chain)
+            cchain.update(chain)
         return cchain
     
     @iseq
@@ -416,7 +412,7 @@ class _lain_chain(object):
 
 @roprop('meta')
 @roprop('reverse')
-class _lain_cluster_chain(object):
+class _lain_cluster_chain(_lain_chain):
 
     def __init__(self, metachain = None, reverse = False):
         assert metachain is None or isinstance(metachain, _lain_chain)
@@ -424,6 +420,8 @@ class _lain_cluster_chain(object):
         self._meta = metachain
         self._vlpool = {}
         self._neg_vlpool = {}
+        self._chpool = {}
+        self._neg_chpool = {}
         
     def _get_vlpool(self, neg):
         if neg:
@@ -437,7 +435,11 @@ class _lain_cluster_chain(object):
         else:
             self.chains = None
 
-    def update_li(self, li, neg = False):
+    def update(self, chain, neg = False):
+        for li in chain._traversal_v():
+            self._update_li(li, neg)
+
+    def _update_li(self, li, neg = False):
         if not li in self.meta:
             return
         vlpool = self._get_vlpool(neg)
@@ -469,12 +471,22 @@ class _lain_cluster_chain(object):
     def _get_chains(self, neg):
         print 'calc vlpool -> chains'
         vlpool = self._get_vlpool(neg)
-        chains = {}
+        if neg:
+            chains = self._neg_chpool
+        else:
+            chains = self._chpool
+        new_chains = {}
         for l in vlpool:
             top = vlpool[l].top
             if not top in chains:
-                chains[top] = _lain_chain(top, self.meta, self.reverse)
-        return chains.values()
+                new_chains[top] = _lain_chain(top, self.meta, self.reverse)
+            else:
+                new_chains[top] = chains[top]
+        if neg:
+            self._neg_chpool = new_chains
+        else:
+            self._chpool = new_chains
+        return new_chains.values()
         
     @lazypropds
     def chains(self):
@@ -483,6 +495,29 @@ class _lain_cluster_chain(object):
     @lazypropds
     def neg_chains(self):
         return self._get_chains(True)
+
+    def _traversal_h(self, root = None, walked = None):
+        raise NotImplementedError('not used')
+    
+    def _traversal_v(self, root = None, walked = None):
+        if self.meta is None:
+            return
+        if walked is None:
+            walked = set()
+        def _trv_ch(root, walked):
+            for li in chain._traversal_v(root):
+                pass
+        for chain in self.chains:
+            if root and root in chain.links:
+                for li in _trv_ch(root, walked):
+                    yield li
+                return
+            elif root is None:
+                for li in _trv_ch(chain.root, walked):
+                    yield li
+
+    def _foreach_chains(self, meth, args, kargs, merg_func):
+        pass
 
 class _lain_any_chain(_lain_chain):
     def split(self, metachain):
@@ -579,22 +614,30 @@ def test():
     print [i for i in nds[2].parent.foreach()]
     print [i for i in nds[2].child.foreach()]
     print '===='
-    nds = [nd(i) for i in xrange(6)]
+    nds = [nd(i) for i in xrange(7)]
     tag2 = nd('tag2')
+    tag3 = nd('tag3')
     mtag = nd('mtag')
     tag.link_to(tag2, mtag)
+    tag2.link_to(tag3, mtag)
     mtagch = mtag.chain()
     tagch1 = tag.chain(mtagch)
     tagch2 = tag2.chain(mtagch)
+    tagch3 = tag3.chain(mtagch)
     nds[0].link_to(nds[1], tag)
     nds[0].link_to(nds[2], tag)
     nds[1].link_to(nds[3], tag2)
     nds[2].link_to(nds[3], tag2)
     nds[3].link_to(nds[4], tag2)
     nds[3].link_to(nds[5], tag2)
+    nds[4].link_to(nds[6], tag3)
+    nds[5].link_to(nds[6], tag3)
     ch1 = nds[0].chain(tagch1)
     ch2 = nds[0].chain(tagch2)
     ch2s = ch1.split(tagch2)
+    ch2sr = ch1.split(tagch3)
+    for c in ch2sr.chains:
+        ch2s.update(c, True)
     print ch2s.chains[0].root, ch2s.chains[1].root
     vlpch2s = ch2s._vlpool
     print [(k, vlpch2s[k].top) for k in vlpch2s]
