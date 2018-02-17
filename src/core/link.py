@@ -415,7 +415,7 @@ class _lain_cluster_chain(_lain_chain):
         self._is_dirty_vlpool = True
 
     def update(self, chain, neg = False):
-        if neg:
+        if neg: # only for neg chain
             self._update_isolink(chain.root, neg)
         for li in chain._traversal_v():
             self._update_li(li, neg)
