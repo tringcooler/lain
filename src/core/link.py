@@ -521,7 +521,27 @@ def test():
     print [i for i in nds[2].inst.foreach()]
     print [i for i in nds[2].parent.foreach()]
     print [i for i in nds[2].child.foreach()]
-    return ch, chrv
+    print '===='
+    nds = [nd(i) for i in xrange(6)]
+    tag2 = nd('tag2')
+    mtag = nd('mtag')
+    tag.link_to(tag2, mtag)
+    mtagch = mtag.chain()
+    tagch1 = tag.chain(mtagch)
+    tagch2 = tag2.chain(mtagch)
+    nds[0].link_to(nds[1], tag)
+    nds[0].link_to(nds[2], tag)
+    nds[1].link_to(nds[3], tag2)
+    nds[2].link_to(nds[3], tag2)
+    nds[3].link_to(nds[4], tag2)
+    nds[3].link_to(nds[5], tag2)
+    ch1 = nds[0].chain(tagch1)
+    ch2 = nds[0].chain(tagch2)
+    ch2s = ch1.split(tagch2)
+    print ch2s[0].root, ch2s[1].root
+    vlpch2s = ch1._merge_to_vlpool(tagch2)
+    print [(k, vlpch2s[k].top) for k in vlpch2s]
+    return ch1, ch2, ch2s
 
 if __name__ == '__main__':
-    ch, chrv = test()
+    ch1, ch2, ch2s = test()
