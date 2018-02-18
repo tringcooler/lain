@@ -332,14 +332,6 @@ class _lain_chain(object):
     def trivial(self):
         return self
 
-    @lazypropdh
-    def cluster(self):
-        self.links #refresh chain links dirty flag
-        return self.split(self.meta)
-
-    def cluster_dirty(self):
-        return self.links_dirty()
-
     def get_links(self, root_out = False):
         rs = self.links.copy()
         if root_out:
@@ -366,19 +358,6 @@ class _lain_chain(object):
         cchain.update(self)
         return cchain
 
-    def merge(self, chains):
-        cchain = _lain_cluster_chain(self.meta, self.reverse)
-        cchain.update(self)
-        for chain in chains:
-            if chain is self:
-                continue
-            if not chain.meta == self.meta:
-                raise ValueError('can not merge chains with different meta')
-            if not chain.reverse == self.reverse:
-                raise ValueError('can not merge chains with different direct')
-            cchain.update(chain)
-        return cchain
-
     def _chk_dest_valid(self, dest):
         if not isinstance(dest, _lain_chain):
             raise TypeError('unsupported dest type')
@@ -403,13 +382,24 @@ class _lain_chain(object):
         if not self._chk_dest_valid(dest):
             raise ValueError(
                 'can not merge chains with different meta or direct')
-        s = self.cluster
-        d = self.cluster
-        for chain in d.chains:
-            s.update(chain)
-        for chain in d.neg_chains:
-            s.update(chain, True)
-        
+        r = _lain_cluster_chain(self.meta, self.reverse)
+        r.update(self)
+        r.update(dest)
+        return r
+
+    def __sub__(self, dest):
+        if not self._chk_dest_valid(dest):
+            raise ValueError(
+                'can not merge chains with different meta or direct')
+        r = _lain_cluster_chain(self.meta, self.reverse)
+        r.update(self)
+        r.update(dest, True)
+        return r
+
+    def __neg__(self):
+        r = _lain_cluster_chain(self.meta, self.reverse)
+        r.update(self, True)
+        return r
 
     def _get_link_desc(self, link):
         if isinstance(link, _lain_link_inst):
@@ -451,6 +441,15 @@ class _lain_cluster_chain(_lain_chain):
         self._is_dirty_vlpool = True
 
     def update(self, chain, neg = False):
+        if isinstance(chain, _lain_cluster_chain):
+            for ch in chain.chains:
+                self._update_chain(ch, neg)
+            for ch in chain.neg_chains:
+                self._update_chain(ch, not neg)
+        else:
+            self._update_chain(chain, neg)
+
+    def _update_chain(self, chain, neg):
         _isoroot = True
         for li in chain._traversal_v():
             _isoroot = False
@@ -537,10 +536,6 @@ class _lain_cluster_chain(_lain_chain):
 
     def trivial_dirty(self):
         return self.links_dirty()
-
-    @property
-    def cluster(self):
-        return self
 
     def _traversal_h(self, root = None, walked = None, bypass = None):
         return self._traversal_x(root, walked, bypass, False)
