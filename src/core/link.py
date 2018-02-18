@@ -385,7 +385,7 @@ class _lain_chain(object):
         r = _lain_cluster_chain(self.meta, self.reverse)
         r.update(self)
         r.update(dest)
-        return r
+        return r.trivial or r
 
     def __sub__(self, dest):
         if not self._chk_dest_valid(dest):
@@ -394,12 +394,12 @@ class _lain_chain(object):
         r = _lain_cluster_chain(self.meta, self.reverse)
         r.update(self)
         r.update(dest, True)
-        return r
+        return r.trivial or r
 
     def __neg__(self):
         r = _lain_cluster_chain(self.meta, self.reverse)
         r.update(self, True)
-        return r
+        return r.trivial or r
 
     def _get_link_desc(self, link):
         if isinstance(link, _lain_link_inst):
@@ -718,6 +718,11 @@ def test():
     ch1s = ch1.split(tagch1)
     print ch1s == ch1
     print ch1s == ch1
+    ch2add = ch2 + ch2s
+    print ch2add.links
+    print ch2add.chains[0] == ch2s.chains[0]
+    print ch2add.chains[2] == ch2s.chains[1]
+    print ch2add.chains[1] == ch2
     return ch1, ch2, ch2s, ch2sr, tagch1
 
 if __name__ == '__main__':
