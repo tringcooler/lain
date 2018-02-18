@@ -332,6 +332,14 @@ class _lain_chain(object):
     def trivial(self):
         return self
 
+    @lazypropdh
+    def cluster(self):
+        self.links #refresh chain links dirty flag
+        return self.split(self.meta)
+
+    def cluster_dirty(self):
+        return self.links_dirty()
+
     def get_links(self, root_out = False):
         rs = self.links.copy()
         if root_out:
@@ -370,12 +378,16 @@ class _lain_chain(object):
                 raise ValueError('can not merge chains with different direct')
             cchain.update(chain)
         return cchain
+
+    def _chk_dest_valid(self, dest):
+        if not isinstance(dest, _lain_chain):
+            raise TypeError('unsupported dest type')
+        return (self.meta == dest.meta
+            and self.reverse == dest.reverse)
     
     @iseq
     def __eq__(self, dest):
-        if not (isinstance(dest, _lain_chain)
-            and self.meta == dest.meta
-            and self.reverse == dest.reverse):
+        if not self._chk_dest_valid(dest):
             return False
         s = self.trivial
         d = dest.trivial
@@ -386,6 +398,18 @@ class _lain_chain(object):
         else:
             return (sorted(s.chains) == sorted(d.chains)
                 and sorted(s.neg_chains) == sorted(d.neg_chains))
+
+    def __add__(self, dest):
+        if not self._chk_dest_valid(dest):
+            raise ValueError(
+                'can not merge chains with different meta or direct')
+        s = self.cluster
+        d = self.cluster
+        for chain in d.chains:
+            s.update(chain)
+        for chain in d.neg_chains:
+            s.update(chain, True)
+        
 
     def _get_link_desc(self, link):
         if isinstance(link, _lain_link_inst):
@@ -513,6 +537,10 @@ class _lain_cluster_chain(_lain_chain):
 
     def trivial_dirty(self):
         return self.links_dirty()
+
+    @property
+    def cluster(self):
+        return self
 
     def _traversal_h(self, root = None, walked = None, bypass = None):
         return self._traversal_x(root, walked, bypass, False)
