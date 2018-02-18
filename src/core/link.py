@@ -332,9 +332,13 @@ class _lain_chain(object):
     def trivial(self):
         return self
 
-    @property
+    @lazypropdh
     def cluster(self):
+        self.links #refresh chain links dirty flag
         return self.split(self.meta)
+
+    def cluster_dirty(self):
+        return self.links_dirty()
 
     def get_links(self, root_out = False):
         rs = self.links.copy()
