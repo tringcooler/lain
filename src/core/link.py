@@ -328,6 +328,10 @@ class _lain_chain(object):
     def term_links(self):
         return self.links.difference(self.non_term_links)
 
+    @property
+    def trivial(self):
+        return self
+
     def get_links(self, root_out = False):
         rs = self.links.copy()
         if root_out:
@@ -373,13 +377,8 @@ class _lain_chain(object):
             and self.meta == dest.meta
             and self.reverse == dest.reverse):
             return False
-        def _och(ch):
-            if isinstance(ch, _lain_cluster_chain):
-                return ch.trivial
-            else:
-                return ch
-        s = _och(self)
-        d = _och(dest)
+        s = self.trivial
+        d = dest.trivial
         if s and d:
             return s.root == d.root
         elif s or d:
