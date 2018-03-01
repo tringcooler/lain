@@ -408,10 +408,22 @@ class _lain_chain(object):
             return link
         else:
             raise TypeError('checked type should be link')
-    
-    def __contains__(self, dest):
+
+    def _contains1(self, dest):
         link = self._get_link_desc(dest)
         return link in self.links
+
+    def _contains_both(self, dests):
+        for d in dests:
+            if not self._contains1(d):
+                return False
+        return True
+    
+    def __contains__(self, dest):
+        if hasattr(dest, '__iter__'):
+            return self._contains_both(dest)
+        else:
+            return self._contains1(dest)
 
 @roprop('meta')
 @roprop('reverse')
@@ -577,6 +589,14 @@ class _lain_cluster_chain(_lain_chain):
                 return True
         return False
 
+    def _contains_both(self, dests):
+        if not super(_lain_cluster_chain, self)._contains_both(dests):
+            return False
+        for chain in self.chains:
+            if chain._contains_both(dests):
+                return True
+        return False
+
     @property
     def root(self):
         return None
@@ -586,7 +606,7 @@ class _lain_cluster_chain(_lain_chain):
 
 class _lain_any_chain(_lain_chain):
     def split(self, metachain):
-        return [self]
+        return self
     def __contains__(self, dest):
         return True
 LainAnyChain = _lain_any_chain(lain_link(), None, False)
@@ -594,7 +614,7 @@ LainAnyChain = _lain_any_chain(lain_link(), None, False)
 class _lain_co_chain(_lain_chain):
     def split(self, metachain):
         rs = super(_lain_co_chain, self).split(metachain)
-        return [LainCoChain(ch) for ch in rs]
+        return LainCoChain(rs)
     def __contains__(self, dest):
         return not super(_lain_co_chain, self).__contains__(dest)
 
@@ -607,6 +627,8 @@ def LainCoChain(ch):
         return _lain_chain(ch.root, ch.meta, ch.reverse)
     elif isinstance(ch, _lain_chain):
         return _lain_co_chain(ch.root, ch.meta, ch.reverse)
+    elif isinstance(ch, _lain_cluster_chain):
+        raise NotImplementedError('CoCC')
     else:
         raise TypeError('should be a lain chain')
 
@@ -723,7 +745,27 @@ def test():
     print ch2add.chains[0] == ch2s.chains[0]
     print ch2add.chains[2] == ch2s.chains[1]
     print ch2add.chains[1] == ch2
-    return ch1, ch2, ch2s, ch2sr, tagch1
+    print '===='
+    nds = [nd(i) for i in xrange(10)]
+    nds[0].link_to(nds[1], tag)
+    nds[0].link_to(nds[2], tag)
+    nds[1].link_to(nds[3], tag2)
+    nds[1].link_to(nds[4], tag2)
+    nds[2].link_to(nds[4], tag2)
+    nds[2].link_to(nds[5], tag2)
+    nds[3].link_to(nds[6], tag2)
+    nds[4].link_to(nds[7], tag2)
+    nds[4].link_to(nds[8], tag2)
+    nds[5].link_to(nds[9], tag2)
+    ch1 = nds[0].chain(tagch1)
+    ch2 = ch1.split(tagch2)
+    print [nds[6], nds[7], nds[8], nds[9]] in ch1
+    print [nds[6], nds[7], nds[8], nds[9]] in ch2
+    print [nds[6], nds[7]] in ch2
+    print [nds[7], nds[8]] in ch2
+    print [nds[8], nds[9]] in ch2
+    print [nds[6], nds[9]] in ch2
+    return nds, ch1, ch2, tagch1
 
 if __name__ == '__main__':
-    ch1, ch2, ch2s, ch2sr, tagch1 = test()
+    nds, ch1, ch2, tagch1 = test()
