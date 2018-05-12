@@ -632,6 +632,21 @@ def LainCoChain(ch):
     else:
         raise TypeError('should be a lain chain')
 
+@neq
+@roprop('sroot')
+@roprop('droot')
+@roprop('meta')
+class _lain_cross(object):
+
+    def __init__(self, sroot, droot, metacross = None):
+        assert isinstance(sroot, lain_link)
+        assert isinstance(droot, lain_link)
+        assert metacross is None or isinstance(metacross, _lain_cross)
+        self._sroot = sroot
+        self._droot = droot
+        self._meta = metacross
+
+
 def test():
     class nd(lain_link):
 
